@@ -18,6 +18,7 @@ package ca
 
 import (
 	"context"
+	"fmt"
 
 	"k8s.io/api/core/v1"
 
@@ -42,6 +43,22 @@ const (
 
 func (c *CA) Setup(ctx context.Context) error {
 	log := logf.FromContext(ctx, "setup")
+
+	// If we have no namespace for the Issuer (ie., this is a ClusterIssuer),
+	// grab the target namespace for the secret from the spec.
+	namespace := c.resourceNamespace
+	if namespace == "" {
+		namespace = c.issuer.GetSpec().CA.SecretNamespace
+	}
+	// Still no namespace? Short-circuit and notify about misconfiguration.
+	if namespace == "" {
+		err := fmt.Errorf("no namespace defined for secret")
+		log.Error(err, "error getting signing CA secret")
+		s := messageErrorGetKeyPair + err.Error()
+		c.Recorder.Event(c.issuer, v1.EventTypeWarning, errorGetKeyPair, s)
+		apiutil.SetIssuerCondition(c.issuer, v1alpha2.IssuerConditionReady, cmmeta.ConditionFalse, errorGetKeyPair, s)
+		return err
+	}
 
 	cert, err := kube.SecretTLSCert(ctx, c.secretsLister, c.resourceNamespace, c.issuer.GetSpec().CA.SecretName)
 	if err != nil {

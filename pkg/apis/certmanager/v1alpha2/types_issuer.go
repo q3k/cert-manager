@@ -212,6 +212,10 @@ type CAIssuer struct {
 	// SecretName is the name of the secret used to sign Certificates issued
 	// by this Issuer.
 	SecretName string `json:"secretName"`
+	// SecretNamespace is the namespace of the secret used to sign Certificates
+	// issued by this ClusterIssuer. Ignored when used on an Issuer (the secret
+	// will be retrieved from the Issuer's namespace).
+	SecretNamespace string `json:"secretNamespace"`
 }
 
 // IssuerStatus contains status information about an Issuer
